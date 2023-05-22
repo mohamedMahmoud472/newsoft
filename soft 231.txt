@@ -1,0 +1,72 @@
+import numpy as np
+
+# Define the TSP problem
+class TSPProblem:
+    def _init_(self, distance_matrix):
+        self.distance_matrix = distance_matrix
+        self.num_cities = distance_matrix.shape[0]
+
+    def calculate_fitness(self, path):
+        total_distance = 0
+        for i in range(self.num_cities - 1):
+            total_distance += self.distance_matrix[path[i], path[i+1]]
+        total_distance += self.distance_matrix[path[-1], path[0]]  # Return to the starting city
+        return 1 / total_distance
+
+# Firefly Algorithm for TSP
+class FireflyTSP:
+    def _init_(self, problem, num_fireflies, max_iterations):
+        self.problem = problem
+        self.num_fireflies = num_fireflies
+        self.max_iterations = max_iterations
+
+    def initialize_fireflies(self):
+        fireflies = []
+        for _ in range(self.num_fireflies):
+            path = np.random.permutation(self.problem.num_cities)
+            fireflies.append(path)
+        return fireflies
+
+    def move_firefly(self, firefly, best_firefly, alpha, beta, gamma):
+        for i in range(self.problem.num_cities):
+            if firefly[i] != best_firefly[i]:
+                distance = self.problem.distance_matrix[firefly[i], firefly[i+1]]
+                attr = beta * np.exp(-gamma * distance ** 2)
+                move = alpha * (best_firefly[i] - firefly[i]) + attr * (np.random.rand() - 0.5)
+                firefly[i] += move
+
+    def run(self):
+        fireflies = self.initialize_fireflies()
+        best_firefly = fireflies[0]
+        best_fitness = self.problem.calculate_fitness(best_firefly)
+
+        for _ in range(self.max_iterations):
+            for i in range(self.num_fireflies):
+                for j in range(self.num_fireflies):
+                    if self.problem.calculate_fitness(fireflies[j]) > self.problem.calculate_fitness(fireflies[i]):
+                        self.move_firefly(fireflies[i], fireflies[j], alpha=0.5, beta=1.0, gamma=1.0)
+
+            current_best_firefly = max(fireflies, key=lambda x: self.problem.calculate_fitness(x))
+            current_best_fitness = self.problem.calculate_fitness(current_best_firefly)
+
+            if current_best_fitness > best_fitness:
+                best_firefly = current_best_firefly
+                best_fitness = current_best_fitness
+
+        return best_firefly
+
+# Example usage
+# Define the distance matrix for the TSP problem
+distance_matrix = np.array([
+    [0, 2, 9, 10],
+    [1, 0, 6, 4],
+    [15, 7, 0, 8],
+    [6, 3, 12, 0]
+])
+
+problem = TSPProblem(distance_matrix)
+firefly_tsp = FireflyTSP(problem, num_fireflies=10, max_iterations=100)
+best_path = firefly_tsp.run()
+
+print("Best path found:", best_path)
+print("Best fitness:", problem.calculate_fitness(best_path))
